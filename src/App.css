@@ -1,0 +1,763 @@
+/* ============ App shell ============ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  text-align: left;
+  background-color: var(--page-bg);
+  background-image: radial-gradient(var(--dot-color) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.app__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--bg);
+}
+
+.app__header h1 {
+  font-size: 28px;
+  margin: 0 0 6px;
+  letter-spacing: 1px;
+}
+
+.app__header h1::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.app__header p {
+  font-size: 13px;
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+.theme-toggle {
+  flex-shrink: 0;
+}
+
+.app__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr);
+  gap: 20px;
+  padding: 20px 28px;
+  align-items: start;
+}
+
+.app__section {
+  padding: 0 28px 20px;
+}
+
+/* ============ Shared flat-panel look (borders, not shadows) ============ */
+
+.map-panel,
+.control-bar,
+.graphs__card,
+.stats,
+.data-table-panel {
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+}
+
+.map-panel {
+  padding: 14px;
+  min-width: 0;
+}
+
+/* ============ Shared buttons ============ */
+
+.btn {
+  font: 12px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    opacity 0.12s;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--text-h);
+  color: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  filter: brightness(1.12);
+}
+
+.btn--icon {
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+}
+
+.btn--icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.control-bar__file input {
+  display: none;
+}
+
+.control-bar__file:has(input:disabled) {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ============ Control bar (compact, horizontal) ============ */
+
+.control-bar {
+  margin: 20px 28px 0;
+  padding: 12px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.control-bar__group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.control-bar__label {
+  font-family: var(--dot);
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.control-bar__divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 24px;
+  background: var(--border);
+}
+
+.control-bar__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 12px var(--mono);
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
+
+.control-bar input[type='number'] {
+  width: 84px;
+  font: 12px var(--mono);
+  padding: 5px 6px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.control-bar input[type='number']:disabled {
+  opacity: 0.35;
+}
+
+.control-bar label:has(input[type='radio']),
+.control-bar label:has(input[type='checkbox']) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 12px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.control-bar input[type='radio'],
+.control-bar input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
+.control-bar__readout {
+  font: 12px var(--mono);
+  color: var(--text);
+}
+
+.control-bar__readout--live::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 1.2s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* ============ Tachimetro digitale (resta in vista scorrendo la pagina) ============ */
+
+.tacho {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 20px 28px 0;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  background: var(--bg);
+  color: var(--text-h);
+  border: 1px solid var(--border-strong);
+}
+
+.tacho__speed {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.tacho__digits {
+  font: 700 52px/1 var(--dot);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  min-width: 4ch;
+  text-align: right;
+}
+
+.tacho__unit {
+  font: 14px var(--dot);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.tacho__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font: 12px/1.35 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.tacho__source {
+  font-family: var(--dot);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tacho--live .tacho__source {
+  color: var(--text-h);
+}
+
+.tacho--live .tacho__source::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: blink 1.2s steps(2, start) infinite;
+}
+
+/* ============ Status bar (helper text) ============ */
+
+.status,
+.pin {
+  margin-top: 12px;
+  padding: 8px 10px;
+  font: 12px/1.5 var(--mono);
+  color: var(--text-h);
+  background: var(--code-bg);
+  border-left: 3px solid var(--accent);
+}
+
+.status--warning {
+  margin: 16px 28px 0;
+  border-left-color: #facc15;
+  background-color: var(--bg);
+  background-image: linear-gradient(rgba(250, 204, 21, 0.16), rgba(250, 204, 21, 0.16));
+}
+
+/* ============ Map ============ */
+
+.main-graph__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.main-graph__header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.main-graph__title {
+  font-family: var(--dot);
+  font-size: 13px;
+  color: var(--text-h);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.main-graph__hint {
+  font: 11px var(--mono);
+  color: var(--text);
+  text-align: center;
+  margin: 0;
+}
+
+.map-panel__map {
+  width: 100%;
+  height: clamp(300px, 58vh, 600px);
+  background: var(--code-bg);
+  cursor: crosshair;
+  /* La mappa non deve coprire elementi esterni (Leaflet usa z-index fino a 1000). */
+  isolation: isolate;
+}
+
+.map-panel__map.leaflet-container {
+  font: 11px var(--mono);
+}
+
+.map-panel__map .leaflet-bar,
+.map-panel__map .leaflet-bar a {
+  border-radius: 2px;
+}
+
+.map-panel__map .leaflet-bar {
+  box-shadow: none;
+  border: 1px solid rgba(0, 0, 0, 0.85);
+}
+
+:root[data-theme='dark'] .map-panel__map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+
+.pin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  border-left-color: #0ea5e9;
+}
+
+.pin__readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pin__readout > * {
+  white-space: nowrap;
+}
+
+.pin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pin__actions .btn {
+  padding: 7px 10px;
+}
+
+/* ============ Graphs (stacked next to the map) ============ */
+
+.graphs {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.graphs__card {
+  padding: 12px;
+  min-width: 0;
+}
+
+.graphs__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.graphs__card h3 {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+  color: var(--text-h);
+}
+
+.graphs__download {
+  font: 11px var(--mono);
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.graphs__select {
+  font: 11px var(--mono);
+  text-transform: uppercase;
+  padding: 4px 6px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+/* Equazione e R² del fit, sotto il grafico. */
+.graphs__fit {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 8px;
+  font: 12px var(--mono);
+  color: var(--text-h);
+}
+
+.graphs__fit code {
+  display: block;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.graphs__download:hover:not(:disabled) {
+  background: var(--text-h);
+  color: var(--bg);
+}
+
+.graphs__download:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.graphs__canvas {
+  height: clamp(200px, 27vh, 280px);
+  position: relative;
+}
+
+.graphs__empty,
+.data-table__empty {
+  font: 12px var(--mono);
+  color: var(--text);
+  border: 1px dashed var(--border-strong);
+  padding: 20px;
+  text-align: center;
+  background: var(--bg);
+}
+
+/* ============ Stats of the selected interval ============ */
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 28px;
+  padding: 12px 16px;
+}
+
+.stats__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stats__label {
+  font: 11px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.stats__value {
+  font: 15px var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+/* ============ Data table ============ */
+
+.data-table__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table {
+  overflow: auto;
+  max-height: 360px;
+}
+
+.data-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font: 12px var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-table th,
+.data-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.data-table__row {
+  cursor: pointer;
+}
+
+.data-table__delete {
+  font: 11px var(--mono);
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.data-table__delete:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.data-table__row--active .data-table__delete {
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
+.data-table__row:hover {
+  background: var(--code-bg);
+}
+
+.data-table__row--active,
+.data-table__row--active:hover {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
+/* ============ Small screens ============ */
+
+@media (max-width: 900px) {
+  .app__header {
+    padding: 16px;
+  }
+
+  .app__header h1 {
+    font-size: 22px;
+  }
+
+  .app__main {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .app__section {
+    padding: 0 16px 16px;
+  }
+
+  .control-bar {
+    margin: 16px 16px 0;
+    padding: 12px;
+  }
+
+  .status--warning {
+    margin: 16px 16px 0;
+  }
+
+  .tacho {
+    margin: 16px 16px 0;
+    padding: 8px 12px;
+  }
+
+  .tacho__digits {
+    font-size: 44px;
+  }
+
+  .data-table__delete {
+    padding: 8px 10px;
+  }
+
+  /* Ogni gruppo su una riga propria: i divisori verticali non servono più. */
+  .control-bar__group {
+    width: 100%;
+  }
+
+  .control-bar__divider {
+    width: 100%;
+    height: 1px;
+    min-height: 0;
+  }
+
+  /* Nei gruppi con pulsanti e campi: etichetta su una riga, poi due colonne di pari larghezza. */
+  .control-bar__group--stack > .control-bar__label,
+  .control-bar__group--stack > .control-bar__readout {
+    flex-basis: 100%;
+  }
+
+  .control-bar__group--stack > .btn,
+  .control-bar__group--stack > .control-bar__field,
+  .control-bar__group--stack > label:has(input[type='radio']) {
+    flex: 1 1 calc(50% - 5px);
+  }
+
+  .control-bar__field {
+    white-space: nowrap;
+  }
+
+  .control-bar__group--stack > .control-bar__field input[type='number'] {
+    /* Larghezza di base nulla: altrimenti la larghezza intrinseca del campo impedisce le due colonne. */
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+  }
+
+  /* Riepilogo: titolo su una riga, poi tre colonne allineate. */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 12px;
+  }
+
+  .stats > .control-bar__label {
+    grid-column: 1 / -1;
+  }
+
+  .stats__value {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  /* Punto fissato: nome e coordinate su righe proprie, t / s / v su tre colonne. */
+  .pin__readout {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px 8px;
+    width: 100%;
+  }
+
+  .pin__readout strong,
+  .pin__coords {
+    grid-column: 1 / -1;
+  }
+
+  .graphs__select {
+    font-size: 16px;
+    text-transform: none;
+    padding: 5px 6px;
+  }
+
+  /* Bersagli comodi per il dito e niente zoom automatico di iOS sui campi (< 16px). */
+  .btn {
+    min-height: 40px;
+  }
+
+  .control-bar input[type='number'] {
+    font-size: 16px;
+    padding: 7px 6px;
+    min-height: 40px;
+  }
+
+  .graphs__download {
+    padding: 8px 10px;
+  }
+
+  .map-panel {
+    padding: 10px;
+  }
+
+  .map-panel__map {
+    height: clamp(260px, 50svh, 460px);
+  }
+
+  .graphs__canvas {
+    height: 220px;
+  }
+
+  .pin__actions {
+    width: 100%;
+  }
+
+  .pin__actions .btn:not(:last-child) {
+    flex: 1;
+    padding: 7px 6px;
+  }
+}
