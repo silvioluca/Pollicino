@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { TrackMap } from './components/TrackMap'
 import { Toolbar } from './components/Toolbar'
 import { DataTable } from './components/DataTable'
@@ -26,12 +26,33 @@ function useTheme(): [Theme, () => void] {
   return [theme, () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))]
 }
 
+const numberOrNull = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+
+/** Rilegge la traccia salvata, scartando ciò che non è un punto con istante e posizione. */
 function loadTrack(): Fix[] {
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(TRACK_KEY) ?? '[]')
-    return Array.isArray(saved) ? (saved as Fix[]) : []
+    if (!Array.isArray(saved)) return []
+    const fixes: Fix[] = []
+    for (const item of saved as unknown[]) {
+      if (typeof item !== 'object' || item === null) continue
+      const { time, lat, lon, accuracy, speed } = item as Record<string, unknown>
+      const [t, la, lo] = [numberOrNull(time), numberOrNull(lat), numberOrNull(lon)]
+      if (t === null || la === null || lo === null) continue
+      if (fixes.length > 0 && t <= fixes[fixes.length - 1].time) continue
+      fixes.push({ time: t, lat: la, lon: lo, accuracy: numberOrNull(accuracy), speed: numberOrNull(speed) })
+    }
+    return fixes
   } catch {
     return []
+  }
+}
+
+function saveTrack(fixes: Fix[]) {
+  try {
+    localStorage.setItem(TRACK_KEY, JSON.stringify(fixes))
+  } catch {
+    // Spazio esaurito: la traccia resta in memoria e si può esportare in CSV.
   }
 }
 
@@ -59,7 +80,17 @@ export default function App() {
   const [fitCount, setFitCount] = useState(0)
   const [playing, setPlaying] = useState(false)
 
+  const lastTime = useRef<number | null>(null)
+
+  useEffect(() => {
+    lastTime.current = fixes.length > 0 ? fixes[fixes.length - 1].time : null
+  }, [fixes])
+
   const addFix = useCallback((fix: Fix) => {
+    // Un punto ben più vecchio dell'ultimo non è un doppione: la traccia caricata ha orari nel futuro.
+    if (lastTime.current !== null && fix.time < lastTime.current - 1000) {
+      setNotice('La traccia ha orari successivi a quello attuale: non si possono aggiungere nuovi punti. Cancellala per registrarne una nuova.')
+    }
     // I tempi devono restare strettamente crescenti: ogni punto è identificato dal suo istante.
     setFixes((prev) => (prev.length > 0 && fix.time <= prev[prev.length - 1].time ? prev : [...prev, fix]))
   }, [])
@@ -70,10 +101,18 @@ export default function App() {
   // Durante la registrazione si salva ogni 15 punti, per non riscrivere tutta la traccia a ogni lettura.
   useEffect(() => {
     if (recording && fixes.length % 15 !== 0) return
-    try {
-      localStorage.setItem(TRACK_KEY, JSON.stringify(fixes))
-    } catch {
-      // Spazio esaurito: la traccia resta in memoria e si può esportare in CSV.
+    saveTrack(fixes)
+  }, [fixes, recording])
+
+  // Se la pagina viene nascosta o chiusa a registrazione in corso, si salvano anche gli ultimi punti.
+  useEffect(() => {
+    if (!recording) return
+    const save = () => saveTrack(fixes)
+    document.addEventListener('visibilitychange', save)
+    window.addEventListener('pagehide', save)
+    return () => {
+      document.removeEventListener('visibilitychange', save)
+      window.removeEventListener('pagehide', save)
     }
   }, [fixes, recording])
 
@@ -129,12 +168,14 @@ export default function App() {
 
   function replaceTrack(next: Fix[]) {
     setFixes(next)
+    setNotice(null)
     setRange(null)
     clearCursor()
     setFitCount((n) => n + 1)
   }
 
   function setBound(which: 'from' | 'to', index: number) {
+    if (rows.length === 0) return
     const last = rows.length - 1
     let a = which === 'from' ? index : from
     let b = which === 'to' ? index : to
@@ -209,7 +250,7 @@ export default function App() {
         onMode={changeMode}
         recording={recording}
         capturing={recorder.capturing}
-        hasTrack={rows.length > 0}
+        hasTrack={fixes.length > 0}
         accuracy={recorder.accuracy}
         sampleSeconds={sampleSeconds}
         onSampleSeconds={(s) => setSampleSeconds(Math.max(0.2, s))}
@@ -302,7 +343,7 @@ export default function App() {
             <Stat label="Δt" value={`${dt.toFixed(1)} s`} />
             <Stat label="Δs" value={`${ds.toFixed(1)} m`} />
             <Stat label="v media" value={dt > 0 ? `${speedIn(ds / dt, speedUnit).toFixed(2)} ${unit}` : '—'} />
-            <Stat label="v max" value={speeds.length ? `${speedIn(Math.max(...speeds), speedUnit).toFixed(2)} ${unit}` : '—'} />
+            <Stat label="v max" value={speeds.length ? `${speedIn(speeds.reduce((m, v) => Math.max(m, v), 0), speedUnit).toFixed(2)} ${unit}` : '—'} />
           </div>
         </section>
       )}

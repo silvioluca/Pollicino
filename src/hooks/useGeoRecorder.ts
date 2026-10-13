@@ -56,7 +56,10 @@ export function useGeoRecorder(onFix: (fix: Fix) => void, sampleSeconds: number)
   const acquireWakeLock = useCallback(async () => {
     if (!('wakeLock' in navigator)) return
     try {
-      wakeLock.current = await navigator.wakeLock.request('screen')
+      const lock = await navigator.wakeLock.request('screen')
+      // La registrazione può essere stata fermata mentre si attendeva la risposta.
+      if (watchId.current === null) void lock.release()
+      else wakeLock.current = lock
     } catch {
       // Negato dal sistema (es. risparmio energetico): si registra comunque.
     }
@@ -100,14 +103,17 @@ export function useGeoRecorder(onFix: (fix: Fix) => void, sampleSeconds: number)
     void acquireWakeLock()
   }, [acquireWakeLock, stop])
 
-  // Il campionamento parte alla prima posizione ricevuta, poi procede a passo costante.
+  // Il campionamento parte alla prima posizione ricevuta...
+  useEffect(() => {
+    if (recording && ready && latest.current) emit(latest.current)
+  }, [recording, ready, emit])
+
+  // ...poi procede a passo costante. Cambiare il passo non aggiunge un punto fuori tempo.
   useEffect(() => {
     if (!recording || !ready) return
-    const tick = () => {
+    const id = setInterval(() => {
       if (latest.current) emit(latest.current)
-    }
-    tick()
-    const id = setInterval(tick, sampleSeconds * 1000)
+    }, sampleSeconds * 1000)
     return () => clearInterval(id)
   }, [recording, ready, sampleSeconds, emit])
 

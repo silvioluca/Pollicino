@@ -14,5 +14,6 @@ export function downloadCsv(rows: Row[], filename = 'pollicino-dati.csv') {
   a.href = url
   a.download = filename
   a.click()
-  URL.revokeObjectURL(url)
+  // Safari avvia il download in ritardo: revocare subito l'URL lo annullerebbe.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
