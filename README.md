@@ -10,7 +10,7 @@ Registra un percorso con il GPS del dispositivo (o importa un file GPX) e mostra
 - **Filtro precisione**: opzionale, nasconde i punti con precisione GPS peggiore della soglia senza eliminarli.
 - **Tachimetro**: velocità dal vivo durante la registrazione, sempre in vista.
 - **Esportazione**: dati in CSV, grafici in PNG.
-- La traccia resta salvata nel browser finché non viene cancellata.
+- La traccia non viene conservata: a ogni apertura l'app parte vuota, quindi esporta i dati in CSV prima di chiudere.
 
 ## Sviluppo
 

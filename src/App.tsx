@@ -11,7 +11,6 @@ import { demoTrack } from './lib/demo'
 import type { Fix, Mode, Quantity, Range, SpeedUnit, Theme } from './types'
 import './App.css'
 
-const TRACK_KEY = 'pollicino-track'
 /** Durata di ogni punto quando si rivede il percorso (non è il tempo reale). */
 const PLAY_STEP_MS = 500
 
@@ -26,36 +25,6 @@ function useTheme(): [Theme, () => void] {
   return [theme, () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))]
 }
 
-const numberOrNull = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
-
-/** Rilegge la traccia salvata, scartando ciò che non è un punto con istante e posizione. */
-function loadTrack(): Fix[] {
-  try {
-    const saved: unknown = JSON.parse(localStorage.getItem(TRACK_KEY) ?? '[]')
-    if (!Array.isArray(saved)) return []
-    const fixes: Fix[] = []
-    for (const item of saved as unknown[]) {
-      if (typeof item !== 'object' || item === null) continue
-      const { time, lat, lon, accuracy, speed } = item as Record<string, unknown>
-      const [t, la, lo] = [numberOrNull(time), numberOrNull(lat), numberOrNull(lon)]
-      if (t === null || la === null || lo === null) continue
-      if (fixes.length > 0 && t <= fixes[fixes.length - 1].time) continue
-      fixes.push({ time: t, lat: la, lon: lo, accuracy: numberOrNull(accuracy), speed: numberOrNull(speed) })
-    }
-    return fixes
-  } catch {
-    return []
-  }
-}
-
-function saveTrack(fixes: Fix[]) {
-  try {
-    localStorage.setItem(TRACK_KEY, JSON.stringify(fixes))
-  } catch {
-    // Spazio esaurito: la traccia resta in memoria e si può esportare in CSV.
-  }
-}
-
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="stats__item">
@@ -68,7 +37,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export default function App() {
   const [theme, toggleTheme] = useTheme()
   const [mode, setMode] = useState<Mode>('gps')
-  const [fixes, setFixes] = useState<Fix[]>(loadTrack)
+  const [fixes, setFixes] = useState<Fix[]>([])
   const [range, setRange] = useState<Range | null>(null)
   const [cursor, setCursor] = useState<number | null>(null)
   const [quantity, setQuantity] = useState<Quantity>('t')
@@ -97,24 +66,6 @@ export default function App() {
 
   const recorder = useGeoRecorder(addFix, sampleSeconds)
   const { recording } = recorder
-
-  // Durante la registrazione si salva ogni 15 punti, per non riscrivere tutta la traccia a ogni lettura.
-  useEffect(() => {
-    if (recording && fixes.length % 15 !== 0) return
-    saveTrack(fixes)
-  }, [fixes, recording])
-
-  // Se la pagina viene nascosta o chiusa a registrazione in corso, si salvano anche gli ultimi punti.
-  useEffect(() => {
-    if (!recording) return
-    const save = () => saveTrack(fixes)
-    document.addEventListener('visibilitychange', save)
-    window.addEventListener('pagehide', save)
-    return () => {
-      document.removeEventListener('visibilitychange', save)
-      window.removeEventListener('pagehide', save)
-    }
-  }, [fixes, recording])
 
   // Il filtro nasconde i punti poco precisi senza eliminarli. I punti senza precisione nota (GPX) restano.
   const visible = useMemo(
