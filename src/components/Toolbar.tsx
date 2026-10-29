@@ -153,37 +153,6 @@ export function Toolbar(p: Props) {
 
       <div className="control-bar__divider" />
 
-      <div className="control-bar__group control-bar__group--stack">
-        <span className="control-bar__label">Intervallo</span>
-        <label>
-          <input type="radio" name="quantity" checked={p.quantity === 't'} onChange={() => p.onQuantity('t')} />
-          Tempo
-        </label>
-        <label>
-          <input type="radio" name="quantity" checked={p.quantity === 's'} onChange={() => p.onQuantity('s')} />
-          Spazio
-        </label>
-        <NumberField label={`da (${unit})`} value={p.fromValue} digits={1} disabled={!p.hasTrack} onCommit={(v) => p.onBound('from', v)} />
-        <NumberField label={`a (${unit})`} value={p.toValue} digits={1} disabled={!p.hasTrack} onCommit={(v) => p.onBound('to', v)} />
-        <button className="btn" onClick={p.onResetRange} disabled={!p.hasRange} title="Torna a mostrare tutta la traccia">
-          Tutto
-        </button>
-      </div>
-
-      <div className="control-bar__divider" />
-
-      <div className="control-bar__group">
-        <span className="control-bar__label">Filtro</span>
-        <label title="Nasconde i punti con precisione GPS peggiore della soglia. I punti non vengono eliminati: togliendo il filtro ricompaiono.">
-          <input type="checkbox" checked={p.filterOn} onChange={(e) => p.onFilterOn(e.target.checked)} />
-          Precisione
-        </label>
-        <NumberField label="entro (m)" value={p.maxAccuracy} disabled={!p.filterOn} onCommit={p.onMaxAccuracy} />
-        {p.filterOn && <span className="control-bar__readout">{p.hiddenCount} esclusi</span>}
-      </div>
-
-      <div className="control-bar__divider" />
-
       <div className="control-bar__group">
         <span className="control-bar__label">Velocità</span>
         <label>
@@ -195,6 +164,41 @@ export function Toolbar(p: Props) {
           km/h
         </label>
       </div>
+
+      <details className="control-bar__advanced">
+        <summary className="control-bar__label">Impostazioni avanzate</summary>
+
+        <div className="control-bar__advanced-body">
+          <div className="control-bar__group control-bar__group--stack">
+            <span className="control-bar__label">Intervallo</span>
+            <label>
+              <input type="radio" name="quantity" checked={p.quantity === 't'} onChange={() => p.onQuantity('t')} />
+              Tempo
+            </label>
+            <label>
+              <input type="radio" name="quantity" checked={p.quantity === 's'} onChange={() => p.onQuantity('s')} />
+              Spazio
+            </label>
+            <NumberField label={`da (${unit})`} value={p.fromValue} digits={1} disabled={!p.hasTrack} onCommit={(v) => p.onBound('from', v)} />
+            <NumberField label={`a (${unit})`} value={p.toValue} digits={1} disabled={!p.hasTrack} onCommit={(v) => p.onBound('to', v)} />
+            <button className="btn" onClick={p.onResetRange} disabled={!p.hasRange} title="Torna a mostrare tutta la traccia">
+              Tutto
+            </button>
+          </div>
+
+          <div className="control-bar__divider" />
+
+          <div className="control-bar__group">
+            <span className="control-bar__label">Filtro</span>
+            <label title="Nasconde i punti con precisione GPS peggiore della soglia. I punti non vengono eliminati: togliendo il filtro ricompaiono.">
+              <input type="checkbox" checked={p.filterOn} onChange={(e) => p.onFilterOn(e.target.checked)} />
+              Precisione
+            </label>
+            <NumberField label="entro (m)" value={p.maxAccuracy} disabled={!p.filterOn} onCommit={p.onMaxAccuracy} />
+            {p.filterOn && <span className="control-bar__readout">{p.hiddenCount} esclusi</span>}
+          </div>
+        </div>
+      </details>
     </div>
   )
 }
