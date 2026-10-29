@@ -121,24 +121,6 @@ export function Toolbar(p: Props) {
             />
           </>
         )}
-        <label className="btn control-bar__file" title="Carica una traccia GPX registrata con un'altra app">
-          Importa GPX
-          <input
-            type="file"
-            accept=".gpx,application/gpx+xml,application/xml,text/xml"
-            disabled={p.recording}
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) p.onImport(f)
-              e.target.value = ''
-            }}
-          />
-        </label>
-        {!p.hasTrack && !p.recording && (
-          <button className="btn" onClick={p.onDemo} title="Carica una traccia di esempio">
-            Demo
-          </button>
-        )}
         {p.hasTrack && !p.recording && (
           <button className="btn" onClick={p.onClear} title="Elimina tutti i punti">
             Cancella
@@ -169,6 +151,28 @@ export function Toolbar(p: Props) {
         <summary className="control-bar__label">Impostazioni avanzate</summary>
 
         <div className="control-bar__advanced-body">
+          <div className="control-bar__group control-bar__group--stack">
+            <span className="control-bar__label">Carica</span>
+            <label className="btn control-bar__file" title="Carica una traccia GPX registrata con un'altra app">
+              Importa GPX
+              <input
+                type="file"
+                accept=".gpx,application/gpx+xml,application/xml,text/xml"
+                disabled={p.recording}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) p.onImport(f)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <button className="btn" onClick={p.onDemo} disabled={p.hasTrack || p.recording} title="Carica una traccia di esempio">
+              Demo
+            </button>
+          </div>
+
+          <div className="control-bar__divider" />
+
           <div className="control-bar__group control-bar__group--stack">
             <span className="control-bar__label">Intervallo</span>
             <label>

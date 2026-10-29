@@ -330,7 +330,7 @@ export default function App() {
               {mode === 'manual'
                 ? 'Tocca la mappa per aggiungere un punto: il tempo parte da zero sul primo e continua a scorrere. Per fissare un punto usa un grafico o una riga della tabella.'
                 : rows.length === 0
-                ? 'Premi Avvia per registrare il percorso con il GPS di questo dispositivo, oppure importa un file GPX.'
+                ? 'Premi Avvia per registrare il percorso con il GPS di questo dispositivo, oppure importa un file GPX da Impostazioni avanzate.'
                 : 'Tocca la mappa, un grafico o una riga della tabella per fissare un punto: potrai usarlo come inizio o fine dell’intervallo, oppure eliminarlo.'}
             </p>
           )}

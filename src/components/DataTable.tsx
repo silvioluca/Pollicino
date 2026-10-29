@@ -33,7 +33,7 @@ export function DataTable({ rows, cursor, speedUnit, onPick, onDelete }: Props) 
         </button>
       </div>
       {rows.length === 0 ? (
-        <p className="data-table__empty">Nessun dato ancora. Avvia la registrazione o importa un file GPX per vedere i dati qui.</p>
+        <p className="data-table__empty">Nessun dato ancora. Avvia la registrazione o importa un file GPX (Impostazioni avanzate) per vedere i dati qui.</p>
       ) : (
         <div className="data-table" ref={scrollRef}>
           <table>
