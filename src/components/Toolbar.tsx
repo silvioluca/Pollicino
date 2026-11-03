@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { SnapTarget } from '../lib/snap'
 import type { Mode, Quantity, SpeedUnit } from '../types'
 
 interface NumberFieldProps {
@@ -49,6 +50,8 @@ interface Props {
   capturing: boolean
   hasTrack: boolean
   accuracy: number | null
+  /** Falso finché il GPS non è abbastanza preciso da iniziare a campionare. */
+  gpsReady: boolean
   sampleSeconds: number
   onSampleSeconds: (s: number) => void
   onStart: () => void
@@ -71,6 +74,16 @@ interface Props {
   maxAccuracy: number
   onMaxAccuracy: (m: number) => void
   hiddenCount: number
+
+  snapOn: boolean
+  onSnapOn: (on: boolean) => void
+  snapTarget: SnapTarget
+  onSnapTarget: (t: SnapTarget) => void
+  snapping: boolean
+  /** Punti agganciati, o null se la traccia non è agganciata. */
+  snappedCount: number | null
+  snapFailed: boolean
+  onSnapRetry: () => void
 
   speedUnit: SpeedUnit
   onSpeedUnit: (u: SpeedUnit) => void
@@ -128,7 +141,7 @@ export function Toolbar(p: Props) {
         )}
         {p.recording && (
           <span className="control-bar__readout control-bar__readout--live">
-            {p.accuracy === null ? 'in attesa del GPS…' : `GPS ± ${p.accuracy.toFixed(0)} m`}
+            {p.accuracy === null ? 'in attesa del GPS…' : `GPS ± ${p.accuracy.toFixed(0)} m${p.gpsReady ? '' : ' · miglioro la precisione…'}`}
           </span>
         )}
       </div>
@@ -200,6 +213,34 @@ export function Toolbar(p: Props) {
             </label>
             <NumberField label="entro (m)" value={p.maxAccuracy} disabled={!p.filterOn} onCommit={p.onMaxAccuracy} />
             {p.filterOn && <span className="control-bar__readout">{p.hiddenCount} esclusi</span>}
+          </div>
+
+          <div className="control-bar__divider" />
+
+          <div className="control-bar__group control-bar__group--stack">
+            <span className="control-bar__label">Aggancia</span>
+            <label title="Sposta i punti sulla strada o sul binario più coerente con il percorso, a registrazione ferma. Le vie vicine alla traccia vengono scaricate da OpenStreetMap; le posizioni registrate restano salvate e ricompaiono togliendo la spunta.">
+              <input type="checkbox" checked={p.snapOn} onChange={(e) => p.onSnapOn(e.target.checked)} />
+              Attivo
+            </label>
+            <label title="Strade, piste ciclabili e sentieri">
+              <input type="radio" name="snapTarget" checked={p.snapTarget === 'road'} disabled={!p.snapOn} onChange={() => p.onSnapTarget('road')} />
+              Strade
+            </label>
+            <label title="Ferrovie, metropolitane e tram">
+              <input type="radio" name="snapTarget" checked={p.snapTarget === 'rail'} disabled={!p.snapOn} onChange={() => p.onSnapTarget('rail')} />
+              Binari
+            </label>
+            {p.snapOn && p.mode === 'gps' && p.hasTrack && (
+              <span className="control-bar__readout">
+                {p.snapping ? 'cerco le vie…' : p.recording ? 'a fine registrazione' : p.snappedCount !== null ? `${p.snappedCount} agganciati` : ''}
+              </span>
+            )}
+            {p.snapOn && p.mode === 'gps' && p.snapFailed && !p.snapping && !p.recording && (
+              <button className="btn" onClick={p.onSnapRetry}>
+                Riprova
+              </button>
+            )}
           </div>
         </div>
       </details>

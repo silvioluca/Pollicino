@@ -24,6 +24,8 @@ const SafeCanvas = L.Canvas.extend({
 
 interface Props {
   rows: Row[]
+  /** Posizioni registrate dal GPS, se la traccia mostrata è agganciata alla rete. */
+  original: [number, number][] | null
   range: Range | null
   cursor: number | null
   recording: boolean
@@ -40,13 +42,14 @@ interface Props {
 
 interface Layers {
   map: L.Map
+  original: L.Polyline
   base: L.Polyline
   selected: L.Polyline
   dots: L.LayerGroup
   marks: L.LayerGroup
 }
 
-export function TrackMap({ rows, range, cursor, recording, playing, onTogglePlay, fitKey, onPick, onAdd, children }: Props) {
+export function TrackMap({ rows, original, range, cursor, recording, playing, onTogglePlay, fitKey, onPick, onAdd, children }: Props) {
   const elRef = useRef<HTMLDivElement>(null)
   const layersRef = useRef<Layers | null>(null)
   const latest = useRef({ rows, onPick, onAdd })
@@ -62,6 +65,7 @@ export function TrackMap({ rows, range, cursor, recording, playing, onTogglePlay
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map)
+    const originalLine = L.polyline([], { color: '#888888', weight: 2, opacity: 0.6, dashArray: '4 6', interactive: false }).addTo(map)
     const base = L.polyline([], { color: '#888888', weight: 3, opacity: 0.85 }).addTo(map)
     const selected = L.polyline([], { color: ACCENT, weight: 4 }).addTo(map)
     const dots = L.layerGroup().addTo(map)
@@ -71,12 +75,16 @@ export function TrackMap({ rows, range, cursor, recording, playing, onTogglePlay
       if (onAdd) onAdd(e.latlng.lat, e.latlng.lng)
       else if (rows.length > 0) onPick(nearestByPosition(rows, e.latlng.lat, e.latlng.lng))
     })
-    layersRef.current = { map, base, selected, dots, marks }
+    layersRef.current = { map, original: originalLine, base, selected, dots, marks }
     return () => {
       map.remove()
       layersRef.current = null
     }
   }, [])
+
+  useEffect(() => {
+    layersRef.current?.original.setLatLngs(original ?? [])
+  }, [original])
 
   useEffect(() => {
     const layers = layersRef.current

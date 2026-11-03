@@ -8,8 +8,10 @@ Registra un percorso con il GPS del dispositivo (o importa un file GPX) e mostra
 - **Riproduzione**: il pulsante play sulla mappa rivede il percorso, mezzo secondo per punto.
 - **Fit**: su ogni grafico si può adattare una funzione lineare, quadratica o polinomiale (grado 3–6) ai punti mostrati, con equazione e R².
 - **Filtro precisione**: opzionale, nasconde i punti con precisione GPS peggiore della soglia senza eliminarli.
+- **Precisione GPS**: le letture passano per un filtro di Kalman che le pesa secondo la loro precisione; la registrazione parte quando la posizione è affidabile e, se l'accelerometro dice che il telefono è fermo, la posizione smette di oscillare.
+- **Aggancio**: attivo all'avvio, sposta la traccia sulla strada o sul binario più coerente con il percorso (vie scaricate da OpenStreetMap tramite Overpass), a registrazione ferma. Le posizioni registrate restano salvate: sulla mappa sono la linea tratteggiata, e togliendo l'aggancio tornano in uso.
 - **Tachimetro**: velocità dal vivo durante la registrazione, sempre in vista.
-- **Esportazione**: dati in CSV, grafici in PNG.
+- **Esportazione**: dati in CSV, traccia in GPX, grafici in PNG.
 - La traccia resta salvata nel browser finché non viene cancellata.
 
 ## Sviluppo

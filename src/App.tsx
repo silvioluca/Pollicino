@@ -8,6 +8,7 @@ import { useGeoRecorder } from './hooks/useGeoRecorder'
 import { computeRows, nearestIndex, speedIn, speedLabel } from './lib/geo'
 import { parseGpx } from './lib/gpx'
 import { demoTrack } from './lib/demo'
+import { createSnapCache, snapToNetwork, type LatLon, type SnapCache, type SnapTarget } from './lib/snap'
 import type { Fix, Mode, Quantity, Range, SpeedUnit, Theme } from './types'
 import './App.css'
 
@@ -24,6 +25,26 @@ function useTheme(): [Theme, () => void] {
   }, [theme])
 
   return [theme, () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))]
+}
+
+const SNAP_KEY = 'pollicino-snap'
+/** Attesa prima di agganciare: eliminando più punti di fila si aggancia una volta sola. */
+const SNAP_DELAY_MS = 400
+
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Preferenza non salvata: vale fino alla chiusura della pagina.
+  }
 }
 
 const numberOrNull = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -77,6 +98,15 @@ export default function App() {
   const [filterOn, setFilterOn] = useState(false)
   const [maxAccuracy, setMaxAccuracy] = useState(20)
   const [notice, setNotice] = useState<string | null>(null)
+  // Aggancio alla rete stradale o ferroviaria: attivo all'avvio, la scelta resta salvata.
+  const [snapOn, setSnapOn] = useState(() => readPref(SNAP_KEY) !== 'off')
+  const [snapTarget, setSnapTarget] = useState<SnapTarget>(() => (readPref(`${SNAP_KEY}-target`) === 'rail' ? 'rail' : 'road'))
+  // Posizioni agganciate, per istante del punto: le letture originali restano intatte.
+  const [snapped, setSnapped] = useState<Map<number, LatLon> | null>(null)
+  const [snapping, setSnapping] = useState(false)
+  const [snapError, setSnapError] = useState<string | null>(null)
+  const [snapRetry, setSnapRetry] = useState(0)
+  const snapCache = useRef<SnapCache | null>(null)
   const [fitCount, setFitCount] = useState(0)
   const [playing, setPlaying] = useState(false)
   // La traccia di esempio non va salvata: alla prossima apertura l'app deve partire vuota.
@@ -120,10 +150,48 @@ export default function App() {
   }, [stored, recording])
 
   // Il filtro nasconde i punti poco precisi senza eliminarli. I punti senza precisione nota (GPX) restano.
-  const visible = useMemo(
+  const kept = useMemo(
     () => (filterOn ? fixes.filter((f) => f.accuracy === null || f.accuracy <= maxAccuracy) : fixes),
     [fixes, filterOn, maxAccuracy],
   )
+  // In modalità manuale i punti sono dove li ha messi l'utente: niente aggancio.
+  const activeSnap = snapOn && mode === 'gps' ? snapped : null
+  const visible = useMemo(() => {
+    if (!activeSnap) return kept
+    return kept.map((f) => {
+      const p = activeSnap.get(f.time)
+      return p ? { ...f, lat: p.lat, lon: p.lon } : f
+    })
+  }, [kept, activeSnap])
+  const original = useMemo(() => (activeSnap ? kept.map((f): [number, number] => [f.lat, f.lon]) : null), [kept, activeSnap])
+
+  // Si aggancia a registrazione ferma: alla fine della registrazione, all'import e all'apertura dell'app.
+  // Durante la registrazione i punti già agganciati restano tali, i nuovi arrivano grezzi.
+  useEffect(() => {
+    if (!snapOn || mode !== 'gps' || recording || fixes.length === 0) return
+    if (snapCache.current?.target !== snapTarget) snapCache.current = createSnapCache(snapTarget)
+    const cache = snapCache.current
+    const request = new AbortController()
+    const id = setTimeout(async () => {
+      setSnapping(true)
+      try {
+        const result = await snapToNetwork(fixes, cache, request.signal)
+        if (request.signal.aborted) return
+        setSnapped(result)
+        setSnapError(result.size > 0 ? null : snapTarget === 'rail' ? 'Nessun binario vicino alla traccia.' : 'Nessuna strada vicina alla traccia.')
+      } catch (err) {
+        if (request.signal.aborted) return
+        setSnapError(err instanceof Error ? err.message : 'Aggancio non riuscito.')
+      } finally {
+        if (!request.signal.aborted) setSnapping(false)
+      }
+    }, SNAP_DELAY_MS)
+    return () => {
+      clearTimeout(id)
+      request.abort()
+      setSnapping(false)
+    }
+  }, [fixes, snapOn, snapTarget, mode, recording, snapRetry])
   const rows = useMemo(() => computeRows(visible), [visible])
   const from = range?.from ?? 0
   const to = range?.to ?? rows.length - 1
@@ -170,6 +238,9 @@ export default function App() {
   )
 
   function replaceTrack(next: Fix[], isDemo = false) {
+    setSnapped(null)
+    setSnapError(null)
+    snapCache.current = null
     setFixes(next)
     setDemo(isDemo)
     setNotice(null)
@@ -209,6 +280,14 @@ export default function App() {
     clearCursor()
   }
 
+  function changeSnap(on: boolean, target: SnapTarget) {
+    setSnapOn(on)
+    setSnapTarget(target)
+    setSnapError(null)
+    writePref(SNAP_KEY, on ? 'on' : 'off')
+    writePref(`${SNAP_KEY}-target`, target)
+  }
+
   async function importGpx(file: File) {
     try {
       replaceTrack(parseGpx(await file.text()))
@@ -228,7 +307,7 @@ export default function App() {
   const ds = first ? last.s - first.s : 0
   const speeds = selected.flatMap((r) => (r.v === null ? [] : [r.v]))
   const unit = speedLabel(speedUnit)
-  const message = recorder.error ?? notice
+  const message = recorder.error ?? notice ?? (snapOn && mode === 'gps' && !snapping ? snapError : null)
 
   // Tachimetro: velocità dal vivo durante la registrazione, altrimenti quella del punto fissato.
   const lastRow = rows[rows.length - 1]
@@ -256,6 +335,7 @@ export default function App() {
         capturing={recorder.capturing}
         hasTrack={fixes.length > 0}
         accuracy={recorder.accuracy}
+        gpsReady={recorder.ready}
         sampleSeconds={sampleSeconds}
         onSampleSeconds={(s) => setSampleSeconds(Math.max(0.2, s))}
         onStart={recorder.start}
@@ -279,6 +359,17 @@ export default function App() {
         maxAccuracy={maxAccuracy}
         onMaxAccuracy={(m) => changeFilter(filterOn, Math.max(1, m))}
         hiddenCount={fixes.length - visible.length}
+        snapOn={snapOn}
+        onSnapOn={(on) => changeSnap(on, snapTarget)}
+        snapTarget={snapTarget}
+        onSnapTarget={(t) => changeSnap(snapOn, t)}
+        snapping={snapping}
+        snappedCount={activeSnap ? kept.filter((f) => activeSnap.has(f.time)).length : null}
+        snapFailed={snapError !== null}
+        onSnapRetry={() => {
+          setSnapError(null)
+          setSnapRetry((n) => n + 1)
+        }}
         speedUnit={speedUnit}
         onSpeedUnit={setSpeedUnit}
       />
@@ -298,7 +389,7 @@ export default function App() {
       {message && <p className="status status--warning">{message}</p>}
 
       <main className="app__main">
-        <TrackMap rows={rows} range={range} cursor={cursor} recording={recording} playing={playing} onTogglePlay={togglePlay} fitKey={`${fitCount}:${rangeKey}`} onPick={setCursor} onAdd={mode === 'manual' ? addManualPoint : undefined}>
+        <TrackMap rows={rows} original={original} range={range} cursor={cursor} recording={recording} playing={playing} onTogglePlay={togglePlay} fitKey={`${fitCount}:${rangeKey}`} onPick={setCursor} onAdd={mode === 'manual' ? addManualPoint : undefined}>
           {cursorRow ? (
             <div className="pin">
               <span className="pin__readout">

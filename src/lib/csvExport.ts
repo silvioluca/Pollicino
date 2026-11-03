@@ -1,3 +1,4 @@
+import { downloadText } from './download'
 import type { Row } from '../types'
 
 export function downloadCsv(rows: Row[], filename = 'pollicino-dati.csv') {
@@ -7,13 +8,5 @@ export function downloadCsv(rows: Row[], filename = 'pollicino-dati.csv') {
       .map((v) => (v === null || v === undefined ? '' : v))
       .join(','),
   )
-  const csv = [header.join(','), ...lines].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  // Safari avvia il download in ritardo: revocare subito l'URL lo annullerebbe.
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadText([header.join(','), ...lines].join('\n'), filename, 'text/csv;charset=utf-8;')
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { downloadCsv } from '../lib/csvExport'
+import { downloadGpx } from '../lib/gpx'
 import { speedIn, speedLabel } from '../lib/geo'
 import type { Row, SpeedUnit } from '../types'
 
@@ -28,9 +29,14 @@ export function DataTable({ rows, cursor, speedUnit, onPick, onDelete }: Props) 
     <div className="data-table-panel">
       <div className="data-table__header">
         <span className="main-graph__title">Dati</span>
-        <button className="graphs__download" onClick={() => downloadCsv(rows)} disabled={rows.length === 0} title="Scarica i dati come CSV">
-          CSV
-        </button>
+        <div className="main-graph__header-controls">
+          <button className="graphs__download" onClick={() => downloadCsv(rows)} disabled={rows.length === 0} title="Scarica i dati come CSV">
+            CSV
+          </button>
+          <button className="graphs__download" onClick={() => downloadGpx(rows)} disabled={rows.length === 0} title="Scarica la traccia come GPX, da aprire in altre app di mappe">
+            GPX
+          </button>
+        </div>
       </div>
       {rows.length === 0 ? (
         <p className="data-table__empty">Nessun dato ancora. Avvia la registrazione o importa un file GPX (Impostazioni avanzate) per vedere i dati qui.</p>

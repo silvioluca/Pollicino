@@ -11,6 +11,46 @@ export function haversine(lat1: number, lon1: number, lat2: number, lon2: number
   return 2 * EARTH_RADIUS * Math.asin(Math.min(1, Math.sqrt(a)))
 }
 
+/** Incertezza minima del moto in m/s: quanto ci si può spostare tra due letture se il GPS non dà la velocità. */
+const MIN_PROCESS_SPEED = 3
+/** Incertezza del moto quando il dispositivo è fermo: le letture si mediano invece di farsi seguire. */
+const STILL_PROCESS_SPEED = 0.05
+
+/**
+ * Filtro di Kalman sulla posizione: ogni lettura pesa in base alla sua precisione,
+ * così le letture grossolane (rete cellulare, Wi-Fi) e il rumore da fermi spostano poco la stima.
+ */
+export class PositionFilter {
+  lat = 0
+  lon = 0
+  /** Varianza della stima in m². Negativa finché non arriva la prima lettura. */
+  private variance = -1
+  private at = 0
+
+  get accuracy(): number | null {
+    return this.variance < 0 ? null : Math.sqrt(this.variance)
+  }
+
+  update(lat: number, lon: number, accuracy: number, at: number, speed: number | null, still = false) {
+    const measured = Math.max(accuracy, 1) ** 2
+    if (this.variance < 0) {
+      this.lat = lat
+      this.lon = lon
+      this.variance = measured
+      this.at = at
+      return
+    }
+    const dt = Math.max(at - this.at, 0) / 1000
+    const q = still ? STILL_PROCESS_SPEED : Math.max(speed ?? 0, MIN_PROCESS_SPEED)
+    this.variance += dt * q * q
+    this.at = at
+    const k = this.variance / (this.variance + measured)
+    this.lat += k * (lat - this.lat)
+    this.lon += k * (lon - this.lon)
+    this.variance *= 1 - k
+  }
+}
+
 /** Ricava tempo, spazio percorso e velocità da una sequenza di letture GPS. */
 export function computeRows(fixes: Fix[]): Row[] {
   if (fixes.length === 0) return []
