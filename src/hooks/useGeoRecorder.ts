@@ -26,6 +26,10 @@ const MOTION_WINDOW_MS = 2000
  * Serve anche una velocità GPS quasi nulla.
  */
 const STILL_MAX_SPEED = 1
+/** La velocità GPS (effetto Doppler) è affidabile vicino a zero: sotto questa soglia si è fermi anche senza sensori. */
+const STILL_GPS_SPEED = 0.3
+/** Letture consecutive in movimento necessarie per lasciare la posizione della sosta. */
+const MOVING_READINGS = 2
 
 /** Ultima stima della posizione (filtrata), con l'istante dell'ultima lettura. */
 interface Reading {
@@ -34,6 +38,7 @@ interface Reading {
   lon: number
   accuracy: number
   speed: number | null
+  still: boolean
 }
 
 /** Aggiorna il filtro con una lettura del GPS e restituisce la nuova stima. */
@@ -41,9 +46,29 @@ function filterReading(filter: PositionFilter, pos: GeolocationPosition, motion?
   const { latitude, longitude, accuracy, speed } = pos.coords
   const at = Date.now()
   const v = speed !== null && Number.isFinite(speed) && speed >= 0 ? speed : null
-  const still = v !== null && v < STILL_MAX_SPEED && motion?.isStill() === true
+  const still = (v !== null && v < STILL_GPS_SPEED) || (motion?.isStill() === true && (v === null || v < STILL_MAX_SPEED))
   filter.update(latitude, longitude, accuracy, at, v, still)
-  return { at, lat: filter.lat, lon: filter.lon, accuracy: filter.accuracy ?? accuracy, speed: still ? 0 : v }
+  return { at, lat: filter.lat, lon: filter.lon, accuracy: filter.accuracy ?? accuracy, speed: still ? 0 : v, still }
+}
+
+/**
+ * Da fermi la posizione resta bloccata dov'era all'inizio della sosta: anche filtrata, la stima
+ * continuerebbe a spostarsi di qualche metro e quegli spostamenti diventerebbero spazio percorso.
+ * Il blocco si toglie solo dopo MOVING_READINGS letture in movimento, così un'esitazione non lo rompe.
+ */
+class StopHold {
+  private held: { lat: number; lon: number } | null = null
+  private moving = 0
+
+  apply(r: Reading): Reading {
+    if (r.still) {
+      this.moving = 0
+      this.held ??= { lat: r.lat, lon: r.lon }
+    } else if (this.held && ++this.moving >= MOVING_READINGS) {
+      this.held = null
+    }
+    return this.held ? { ...r, ...this.held, speed: 0 } : r
+  }
 }
 
 type MotionPermission = { requestPermission?: () => Promise<'granted' | 'denied'> }
@@ -170,9 +195,10 @@ export function useGeoRecorder(onFix: (fix: Fix) => void, sampleSeconds: number)
     const detector = new StillnessDetector()
     detector.start()
     motion.current = detector
+    const hold = new StopHold()
     watchId.current = navigator.geolocation.watchPosition(
       (pos) => {
-        const reading = filterReading(filter, pos, detector)
+        const reading = hold.apply(filterReading(filter, pos, detector))
         latest.current = reading
         setError(null)
         setAccuracy(reading.accuracy)

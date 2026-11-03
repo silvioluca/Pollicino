@@ -8,7 +8,7 @@ import { useGeoRecorder } from './hooks/useGeoRecorder'
 import { computeRows, nearestIndex, speedIn, speedLabel } from './lib/geo'
 import { parseGpx } from './lib/gpx'
 import { demoTrack } from './lib/demo'
-import { createSnapCache, snapToNetwork, type LatLon, type SnapCache, type SnapTarget } from './lib/snap'
+import { createSnapCache, snapToNetwork, type LatLon, type SnapCache } from './lib/snap'
 import type { Fix, Mode, Quantity, Range, SpeedUnit, Theme } from './types'
 import './App.css'
 
@@ -98,9 +98,8 @@ export default function App() {
   const [filterOn, setFilterOn] = useState(false)
   const [maxAccuracy, setMaxAccuracy] = useState(20)
   const [notice, setNotice] = useState<string | null>(null)
-  // Aggancio alla rete stradale o ferroviaria: attivo all'avvio, la scelta resta salvata.
+  // Aggancio a strade e binari: attivo all'avvio, la scelta resta salvata.
   const [snapOn, setSnapOn] = useState(() => readPref(SNAP_KEY) !== 'off')
-  const [snapTarget, setSnapTarget] = useState<SnapTarget>(() => (readPref(`${SNAP_KEY}-target`) === 'rail' ? 'rail' : 'road'))
   // Posizioni agganciate, per istante del punto: le letture originali restano intatte.
   const [snapped, setSnapped] = useState<Map<number, LatLon> | null>(null)
   const [snapping, setSnapping] = useState(false)
@@ -169,7 +168,7 @@ export default function App() {
   // Durante la registrazione i punti già agganciati restano tali, i nuovi arrivano grezzi.
   useEffect(() => {
     if (!snapOn || mode !== 'gps' || recording || fixes.length === 0) return
-    if (snapCache.current?.target !== snapTarget) snapCache.current = createSnapCache(snapTarget)
+    snapCache.current ??= createSnapCache()
     const cache = snapCache.current
     const request = new AbortController()
     const id = setTimeout(async () => {
@@ -178,7 +177,7 @@ export default function App() {
         const result = await snapToNetwork(fixes, cache, request.signal)
         if (request.signal.aborted) return
         setSnapped(result)
-        setSnapError(result.size > 0 ? null : snapTarget === 'rail' ? 'Nessun binario vicino alla traccia.' : 'Nessuna strada vicina alla traccia.')
+        setSnapError(result.size > 0 ? null : 'Nessuna strada o binario vicino alla traccia.')
       } catch (err) {
         if (request.signal.aborted) return
         setSnapError(err instanceof Error ? err.message : 'Aggancio non riuscito.')
@@ -191,7 +190,7 @@ export default function App() {
       request.abort()
       setSnapping(false)
     }
-  }, [fixes, snapOn, snapTarget, mode, recording, snapRetry])
+  }, [fixes, snapOn, mode, recording, snapRetry])
   const rows = useMemo(() => computeRows(visible), [visible])
   const from = range?.from ?? 0
   const to = range?.to ?? rows.length - 1
@@ -280,12 +279,10 @@ export default function App() {
     clearCursor()
   }
 
-  function changeSnap(on: boolean, target: SnapTarget) {
+  function changeSnap(on: boolean) {
     setSnapOn(on)
-    setSnapTarget(target)
     setSnapError(null)
     writePref(SNAP_KEY, on ? 'on' : 'off')
-    writePref(`${SNAP_KEY}-target`, target)
   }
 
   async function importGpx(file: File) {
@@ -360,9 +357,7 @@ export default function App() {
         onMaxAccuracy={(m) => changeFilter(filterOn, Math.max(1, m))}
         hiddenCount={fixes.length - visible.length}
         snapOn={snapOn}
-        onSnapOn={(on) => changeSnap(on, snapTarget)}
-        snapTarget={snapTarget}
-        onSnapTarget={(t) => changeSnap(snapOn, t)}
+        onSnapOn={changeSnap}
         snapping={snapping}
         snappedCount={activeSnap ? kept.filter((f) => activeSnap.has(f.time)).length : null}
         snapFailed={snapError !== null}

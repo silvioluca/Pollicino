@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import type { SnapTarget } from '../lib/snap'
 import type { Mode, Quantity, SpeedUnit } from '../types'
 
 interface NumberFieldProps {
@@ -77,8 +76,6 @@ interface Props {
 
   snapOn: boolean
   onSnapOn: (on: boolean) => void
-  snapTarget: SnapTarget
-  onSnapTarget: (t: SnapTarget) => void
   snapping: boolean
   /** Punti agganciati, o null se la traccia non è agganciata. */
   snappedCount: number | null
@@ -219,17 +216,9 @@ export function Toolbar(p: Props) {
 
           <div className="control-bar__group control-bar__group--stack">
             <span className="control-bar__label">Aggancia</span>
-            <label title="Sposta i punti sulla strada o sul binario più coerente con il percorso, a registrazione ferma. Le vie vicine alla traccia vengono scaricate da OpenStreetMap; le posizioni registrate restano salvate e ricompaiono togliendo la spunta.">
+            <label title="Sposta i punti sulla strada o sul binario più coerente con il percorso (a piedi, in bici e in auto le strade, in treno i binari), a registrazione ferma. Le vie vicine alla traccia vengono scaricate da OpenStreetMap; le posizioni registrate restano salvate e ricompaiono togliendo la spunta.">
               <input type="checkbox" checked={p.snapOn} onChange={(e) => p.onSnapOn(e.target.checked)} />
-              Attivo
-            </label>
-            <label title="Strade, piste ciclabili e sentieri">
-              <input type="radio" name="snapTarget" checked={p.snapTarget === 'road'} disabled={!p.snapOn} onChange={() => p.onSnapTarget('road')} />
-              Strade
-            </label>
-            <label title="Ferrovie, metropolitane e tram">
-              <input type="radio" name="snapTarget" checked={p.snapTarget === 'rail'} disabled={!p.snapOn} onChange={() => p.onSnapTarget('rail')} />
-              Binari
+              Strade e binari
             </label>
             {p.snapOn && p.mode === 'gps' && p.hasTrack && (
               <span className="control-bar__readout">
